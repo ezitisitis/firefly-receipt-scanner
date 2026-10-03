@@ -61,7 +61,7 @@ https://github.com/user-attachments/assets/ec41d8dc-71e9-4aa4-b65c-869c3dd54845
    |---|---|---|---|
    | Google Gemini (default) | `https://generativelanguage.googleapis.com/v1beta/openai/` | `gemini-2.5-flash` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
    | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
-   | Anthropic Claude | `https://api.anthropic.com/v1/` | `claude-sonnet-4-5` | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
+   | Anthropic Claude | `https://api.anthropic.com/v1/` | `claude-sonnet-5-5` | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
    | Ollama (local) | `http://<host>:11434/v1` | `qwen2.5vl` | none (any non-empty value, e.g. `ollama`) |
    | OpenRouter | `https://openrouter.ai/api/v1` | `google/gemini-2.5-flash` | [openrouter.ai/keys](https://openrouter.ai/keys) |
    | Mistral | `https://api.mistral.ai/v1` | `pixtral-12b-2409` | [console.mistral.ai](https://console.mistral.ai/api-keys) |
