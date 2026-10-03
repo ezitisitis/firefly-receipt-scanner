@@ -11,10 +11,15 @@ Receipt Scanner for Firefly III — a FastAPI web app that scans receipts using 
 ```bash
 docker-compose up -d             # build and run on port 8000
 docker-compose up -d --build     # rebuild after code changes
-uv sync --frozen                 # install deps locally (for IDE support)
+uv sync --frozen                 # install deps locally (incl. dev deps)
+uv run pytest                    # run the test suite
+uv run pytest --cov              # with coverage (fails below 90%)
+uv run pytest tests/test_firefly.py::test_attach_image   # single test
 ```
 
-No test suite or linter is currently configured.
+Tests live in `tests/` and mock Firefly III (`requests`) and the LLM client, so they need no network or `.env`; `tests/conftest.py` sets dummy settings env vars. `tests/test_app.py` patches `requests.get` while importing `app.app`, because the module checks the Firefly III connection at import time. No linter is configured.
+
+CI (`.github/workflows/ci.yml`) runs the tests and a Docker build on every PR; the `CI success` job aggregates both and is the check to require in branch protection. The Docker image installs with `--no-dev`, so pytest isn't shipped.
 
 ## Architecture
 
@@ -33,7 +38,7 @@ User → FastAPI (app.py) → OpenAI-compatible LLM (receipt_processing.py)
 
 ### Key Modules
 - **app.py** — FastAPI routes, middleware (ProxyHeaders, TrustedHost), static file mounting, startup validation of Firefly III connection
-- **receipt_processing.py** — LLM integration via the `openai` SDK (`LLM_BASE_URL`/`LLM_MODEL`, defaults to Gemini `gemini-2.5-flash`), dynamic prompt construction with Firefly categories/budgets, JSON response parsed into `ReceiptModel` by `parse_receipt` (`uv run python -m app.test_parse` checks it)
+- **receipt_processing.py** — LLM integration via the `openai` SDK (`LLM_BASE_URL`/`LLM_MODEL`, defaults to Gemini `gemini-2.5-flash`), dynamic prompt construction with Firefly categories/budgets, JSON response parsed into `ReceiptModel` by `parse_receipt`
 - **firefly.py** — Firefly III REST API client (accounts, categories, budgets, transaction creation), 30s timeout, comprehensive HTTP error handling
 - **image_utils.py** — PIL image processing: RGB conversion, resize to max 768×768 with aspect ratio preservation, returns base64 JPEG
 - **models.py** — `ReceiptModel` Pydantic model (date, amount, store_name, description, category, budget)
@@ -50,4 +55,4 @@ Environment variables loaded via `pydantic-settings` (`app/config.py`) (see `.en
 - `ATTACH_RECEIPT_DEFAULT` — initial state of the attach-receipt checkbox on the review page, defaults to `true`
 
 ### Tech Stack
-Python 3.13, FastAPI, Uvicorn, Jinja2, Pydantic, Pillow, openai, uv (package manager), Docker
+Python 3.13, FastAPI, Uvicorn, Jinja2, Pydantic, Pillow, openai, uv (package manager), Docker, pytest

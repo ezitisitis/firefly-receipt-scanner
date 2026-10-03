@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run tests
+        run: uv run pytest --cov --cov-report=term-missing
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: receipt-scanner:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test image
+        run: |
+          docker run --rm receipt-scanner:ci \
+            uv run --no-dev python -c "import fastapi, openai, PIL, uvicorn, app.firefly"
+
+  # Single status check to mark as required in branch protection
+  ci-success:
+    name: CI success
+    if: always()
+    needs: [test, docker]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required jobs
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ] || [ "${{ needs.docker.result }}" != "success" ]; then
+            echo "Tests: ${{ needs.test.result }}, Docker build: ${{ needs.docker.result }}"
+            exit 1
+          fi

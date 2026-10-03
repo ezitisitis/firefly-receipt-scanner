@@ -150,7 +150,26 @@ Your `.env` file will not be affected by the update.
   - `models.py` - Data models
   - `templates/` - HTML templates
   - `static/` - Static assets (CSS, JavaScript)
+- `tests/` - pytest suite (Firefly III and the LLM are mocked, no network needed)
 
+### Running Tests
+
+```bash
+uv sync --frozen
+uv run pytest --cov
+```
+
+### Continuous Integration
+
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`:
+
+- **Tests** - the pytest suite with coverage (fails below 90%)
+- **Docker build** - builds the image and checks the app's dependencies import inside it
+- **CI success** - passes only when both jobs above pass
+
+To block merging until CI is green, enable branch protection on `main`
+(Settings → Branches, or Rules → Rulesets) with "Require status checks to pass"
+and add **CI success** as a required check.
 
 ## Contributing
 
