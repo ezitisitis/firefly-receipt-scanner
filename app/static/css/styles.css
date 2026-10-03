@@ -39,6 +39,8 @@ a { text-decoration: none; }
 }
 .card-primary { --lte-card-variant-bg: #1e6581; --lte-card-variant-bg-rgb: 30, 101, 129; }
 .card-danger { --lte-card-variant-bg: #cd5029; --lte-card-variant-bg-rgb: 205, 80, 41; }
+.form-check-input:checked { background-color: #1e6581; border-color: #1e6581; }
+.form-check-input:focus,
 .form-control:focus, .form-select:focus {
     border-color: #8fb2c0;
     box-shadow: 0 0 0 .25rem rgba(30, 101, 129, .25);
