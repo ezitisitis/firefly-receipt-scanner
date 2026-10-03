@@ -3,47 +3,58 @@
 {% block title %}Upload Receipt{% endblock %}
 
 {% block content %}
-<h1>Receipt Scanner</h1>
-<form id="receipt-form" action="/extract" method="post" enctype="multipart/form-data" onsubmit="showLoading()">
-    <div class="form-group">
-        <label for="source_account">Source Account:</label>
-        <select id="source_account" name="source_account" required>
-            {% for account in asset_accounts %}
-            <option value="{{ account }}">{{ account }}</option>
-            {% endfor %}
-        </select>
-    </div>
+{% if success_message %}
+<div class="alert alert-success d-flex align-items-center gap-2" role="alert">
+    <i class="bi bi-check-circle-fill"></i>
+    <div>{{ success_message }}</div>
+</div>
+{% endif %}
 
-    <div class="camera-container">
-        <video id="camera-preview" autoplay playsinline></video>
-        <canvas id="canvas" style="display: none;"></canvas>
-        <div class="camera-buttons">
-            <button type="button" class="camera-btn start-camera" id="startCamera">Take Photo</button>
-            <button type="button" class="camera-btn capture" id="capture">Capture</button>
-            <button type="button" class="camera-btn retake" id="retake">Retake</button>
+<form id="receipt-form" action="/extract" method="post" enctype="multipart/form-data" onsubmit="showLoading()">
+    <div class="card card-primary card-outline mb-4">
+        <div class="card-header">
+            <h3 class="card-title"><i class="bi bi-receipt me-1"></i> Scan a receipt</h3>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="source_account" class="form-label">Source account</label>
+                <select id="source_account" name="source_account" class="form-select" required>
+                    {% for account in asset_accounts %}
+                    <option value="{{ account }}">{{ account }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- In-page camera is disabled (camera.js is not loaded); the file input below opens the camera on mobile. -->
+            <div class="camera-container mb-3">
+                <video id="camera-preview" class="rounded" autoplay playsinline></video>
+                <canvas id="canvas" style="display: none;"></canvas>
+                <div class="d-grid gap-2">
+                    <button type="button" class="btn btn-outline-primary" id="startCamera"><i class="bi bi-camera"></i> Take photo</button>
+                    <button type="button" class="btn btn-primary" id="capture"><i class="bi bi-camera-fill"></i> Capture</button>
+                    <button type="button" class="btn btn-secondary" id="retake"><i class="bi bi-arrow-counterclockwise"></i> Retake</button>
+                </div>
+            </div>
+
+            <div>
+                <label for="file" class="form-label">Choose image</label>
+                <input type="file" id="file" name="file" class="form-control" accept="image/*">
+                <div class="form-text">Take a photo or choose an image of the receipt.</div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <button type="submit" id="submit-btn" class="btn btn-primary w-100">
+                <i class="bi bi-magic"></i> Extract receipt data
+            </button>
         </div>
     </div>
-
-    <div class="or-divider"><span>OR</span></div>
-
-    <div class="form-group">
-        <label for="file">Choose image:</label>
-        <input type="file" id="file" name="file" accept="image/*">
-    </div>
-
-    <button type="submit" id="submit-btn" class="btn">Extract Receipt Data</button>
 </form>
 
 <div id="loading" class="loading">
-    <p>Processing receipt... This may take a minute. Please don't close this page.</p>
-    <p>If this takes too long, you can try again with a smaller or clearer image.</p>
+    <div class="spinner-border text-primary mb-3" role="status" aria-hidden="true"></div>
+    <p class="mb-1 fw-semibold">Processing receipt... This may take a minute. Please don't close this page.</p>
+    <p class="mb-0 text-body-secondary">If this takes too long, you can try again with a smaller or clearer image.</p>
 </div>
-
-{% if success_message %}
-<div class="success">
-    {{ success_message }}
-</div>
-{% endif %}
 {% endblock %}
 
 {% block extra_scripts %}
@@ -53,4 +64,4 @@
         document.getElementById('submit-btn').disabled = true;
     }
 </script>
-{% endblock %} 
+{% endblock %}

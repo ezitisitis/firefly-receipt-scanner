@@ -54,6 +54,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # Set up templates
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["attach_receipt_default"] = get_settings().attach_receipt_default
+templates.env.globals["firefly_url"] = get_settings().firefly_iii_url
 
 
 @app.get("/", response_class=HTMLResponse)
