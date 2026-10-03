@@ -30,8 +30,8 @@ https://github.com/user-attachments/assets/ec41d8dc-71e9-4aa4-b65c-869c3dd54845
 
 1. Clone this repository:
    ```
-   git clone https://github.com/yourusername/receipt-scanner.git
-   cd receipt-scanner
+   git clone https://github.com/ezitisitis/firefly-receipt-scanner.git
+   cd firefly-receipt-scanner
    ```
 
 2. Create a `.env` file based on the `.env.example`:
@@ -78,7 +78,28 @@ https://github.com/user-attachments/assets/ec41d8dc-71e9-4aa4-b65c-869c3dd54845
 
 This application does not include built-in authentication. It is recommended to deploy it within your local network, ideally alongside your Firefly III instance. To securely access the application remotely, consider using a VPN to connect to your local network.
 
-### Using Docker Compose (Recommended)
+### Using a prebuilt image (Recommended)
+
+Images for `linux/amd64` and `linux/arm64` are published to Docker Hub and the GitHub Container Registry:
+
+- `ezitisitis/firefly-receipt-scanner`
+- `ghcr.io/ezitisitis/firefly-receipt-scanner`
+
+| Tag | Contents |
+|---|---|
+| `latest` | the latest stable release |
+| `X.Y.Z` / `X.Y` | a specific release |
+| `nightly` | the current `main` branch, rebuilt on every merge |
+
+```
+docker run -d --name receipt-scanner -p 8000:8000 --env-file .env \
+  --restart unless-stopped ezitisitis/firefly-receipt-scanner:latest
+```
+
+Or with Docker Compose, replace `build: .` in `docker-compose.yml` with
+`image: ezitisitis/firefly-receipt-scanner:latest`.
+
+### Building with Docker Compose
 
 1. Build and start the application:
    ```
@@ -113,7 +134,11 @@ If you're using a phone, consider adding a bookmark of the app to your home scre
 
 ## Updating
 
-To update to the latest version:
+If you use a prebuilt image, pull the new tag and recreate the container
+(`docker compose pull && docker compose up -d`). Check `.env.example` for new
+environment variables first.
+
+To update a source checkout to the latest version:
 
 1. Pull the latest changes:
    ```
@@ -167,9 +192,41 @@ uv run pytest --cov
 - **Docker build** - builds the image and checks the app's dependencies import inside it
 - **CI success** - passes only when both jobs above pass
 
+`.github/workflows/publish.yml` builds and pushes the Docker image (see
+[Using a prebuilt image](#using-a-prebuilt-image-recommended)):
+
+- **push to `main`** → `nightly`
+- **published release** (tag `vX.Y.Z`) → `X.Y.Z`, plus `X.Y` and `latest` unless it is marked as a pre-release
+
+It needs the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`
+(a Docker Hub access token with read/write scope). The Docker Hub repository
+defaults to `ezitisitis/firefly-receipt-scanner` and can be changed with the
+`DOCKERHUB_IMAGE` repository variable. GHCR uses the built-in `GITHUB_TOKEN`.
+
 To block merging until CI is green, enable branch protection on `main`
 (Settings → Branches, or Rules → Rulesets) with "Require status checks to pass"
 and add **CI success** as a required check.
+
+## Why this is a separate project
+
+This repository started as a fork of David Galevski's original Receipt Scanner
+for Firefly III. It has since been detached from the fork network and is
+developed independently, because it has diverged far enough that the changes
+no longer fit as pull requests upstream:
+
+- **Any LLM provider** - the Gemini-only SDK was replaced with an
+  OpenAI-compatible client, so OpenAI, Claude, Ollama, OpenRouter, Mistral and
+  others work alongside Gemini.
+- **Receipt attachments** - the receipt image can be uploaded to Firefly III
+  together with the transaction.
+- **Firefly III look and feel** - the UI was restyled to match the Firefly III
+  v2 layout.
+- **Tests, CI and published images** - a pytest suite, CI on every pull
+  request, and Docker images on Docker Hub and GHCR (`latest` and `nightly`),
+  so you no longer need to build from source.
+
+Running it as its own project means its own issues, releases and image tags,
+without implying the original author endorses or maintains these changes.
 
 ## Contributing
 
@@ -184,6 +241,15 @@ Crypto:
 - ETH: `0x1732b7b8d490e5114754702E9bF07dE61AA63691`
 - BTC: `bc1qwczllcjeen7yzpj50dn950t6m82ryggf9pkhas`
 - Tron (TRC20): `TJQK7UQVNGwavkCXmitUHVCFcRfMdZQAHs`
+
+## Credits
+
+Receipt Scanner for Firefly III was originally created by **David Galevski**,
+who wrote the initial application: the FastAPI app, the Gemini-based receipt
+extraction and the Firefly III integration. This project builds on that work;
+thank you, David!
+
+Maintained by [Marks Bogdanovs (ezitisitis)](https://github.com/ezitisitis).
 
 ## License
 

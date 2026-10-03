@@ -19,7 +19,7 @@ uv run pytest tests/test_firefly.py::test_attach_image   # single test
 
 Tests live in `tests/` and mock Firefly III (`requests`) and the LLM client, so they need no network or `.env`; `tests/conftest.py` sets dummy settings env vars. `tests/test_app.py` patches `requests.get` while importing `app.app`, because the module checks the Firefly III connection at import time. No linter is configured.
 
-CI (`.github/workflows/ci.yml`) runs the tests and a Docker build on every PR; the `CI success` job aggregates both and is the check to require in branch protection. The Docker image installs with `--no-dev`, so pytest isn't shipped.
+CI (`.github/workflows/ci.yml`) runs the tests and a Docker build on every PR; the `CI success` job aggregates both and is the check to require in branch protection. The Docker image installs with `--no-dev`, so pytest isn't shipped. `.github/workflows/publish.yml` pushes multi-arch images to Docker Hub and `ghcr.io`: `nightly` on every push to `main`, `X.Y.Z`/`X.Y`/`latest` on a published (non-prerelease) release; it needs the `DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN` secrets.
 
 ## Architecture
 
