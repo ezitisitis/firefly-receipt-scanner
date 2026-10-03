@@ -144,6 +144,16 @@ Your `.env` file will not be affected by the update.
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Support
+
+If you find this project useful, you can support it via [GitHub Sponsors](https://github.com/sponsors/ezitisitis) or [Buy Me a Coffee](https://buymeacoffee.com/ezitisitis).
+
+Crypto:
+
+- ETH: `0x1732b7b8d490e5114754702E9bF07dE61AA63691`
+- BTC: `bc1qwczllcjeen7yzpj50dn950t6m82ryggf9pkhas`
+- Tron (TRC20): `TJQK7UQVNGwavkCXmitUHVCFcRfMdZQAHs`
+
 ## License
 
 MIT
