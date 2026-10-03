@@ -3,68 +3,77 @@
 {% block title %}Review Receipt Data{% endblock %}
 
 {% block content %}
-<h1>Review Receipt Data</h1>
-<p>Please review and edit the extracted data before creating the transaction.</p>
-
 <form action="/create-transaction" method="post" onsubmit="showLoading()">
-    <div class="form-group">
-        <label for="date">Date:</label>
-        <input type="date" id="date" name="date" value="{{ extracted_data.date }}" required>
-    </div>
-    
-    <div class="form-group">
-        <label for="amount">Amount:</label>
-        <input type="number" id="amount" name="amount" value="{{ extracted_data.amount }}" step="0.01" required>
-    </div>
-    
-    <div class="form-group">
-        <label for="store_name">Store Name:</label>
-        <input type="text" id="store_name" name="store_name" value="{{ extracted_data.store_name }}" required>
-    </div>
-    
-    <div class="form-group">
-        <label for="description">Description:</label>
-        <input type="text" id="description" name="description" value="{{ extracted_data.description }}" required>
-    </div>
-    
-    <div class="form-group">
-        <label for="category">Category:</label>
-        <select id="category" name="category" required>
-            {% for category in extracted_data.available_categories %}
-            <option value="{{ category }}" {% if category == extracted_data.category %}selected{% endif %}>{{ category }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    
-    <div class="form-group">
-        <label for="budget">Budget:</label>
-        <select id="budget" name="budget" required>
-            {% for budget in extracted_data.available_budgets %}
-            <option value="{{ budget }}" {% if budget == extracted_data.budget %}selected{% endif %}>{{ budget }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    
-    <input type="hidden" name="source_account" value="{{ extracted_data.source_account }}">
-    <input type="hidden" name="image_base64" value="{{ extracted_data.image_base64 }}">
+    <div class="card card-primary card-outline mb-4">
+        <div class="card-header">
+            <h3 class="card-title"><i class="bi bi-pencil-square me-1"></i> New withdrawal</h3>
+        </div>
+        <div class="card-body">
+            <p class="text-body-secondary">Please review and edit the extracted data before creating the transaction.</p>
 
-    <div class="form-group">
-        <img class="receipt-thumb" src="data:image/jpeg;base64,{{ extracted_data.image_base64 }}" alt="Receipt">
-        <label class="checkbox-label">
-            <input type="checkbox" name="attach_receipt" value="true"{% if attach_receipt_default %} checked{% endif %}>
-            Attach receipt image to transaction
-        </label>
-    </div>
+            <div class="row">
+                <div class="col-sm-6 mb-3">
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" id="date" name="date" class="form-control" value="{{ extracted_data.date }}" required>
+                </div>
+                <div class="col-sm-6 mb-3">
+                    <label for="amount" class="form-label">Amount</label>
+                    <input type="number" id="amount" name="amount" class="form-control" value="{{ extracted_data.amount }}" step="0.01" inputmode="decimal" required>
+                </div>
+            </div>
 
-    <div class="form-group">
-        <button type="submit" id="submit-btn" class="btn">Create Transaction</button>
-        <button type="button" class="btn btn-secondary" onclick="window.location.href='/'">Cancel</button>
+            <div class="mb-3">
+                <label for="store_name" class="form-label">Store name</label>
+                <input type="text" id="store_name" name="store_name" class="form-control" value="{{ extracted_data.store_name }}" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <input type="text" id="description" name="description" class="form-control" value="{{ extracted_data.description }}" required>
+            </div>
+
+            <div class="row">
+                <div class="col-sm-6 mb-3">
+                    <label for="category" class="form-label">Category</label>
+                    <select id="category" name="category" class="form-select" required>
+                        {% for category in extracted_data.available_categories %}
+                        <option value="{{ category }}" {% if category == extracted_data.category %}selected{% endif %}>{{ category }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-sm-6 mb-3">
+                    <label for="budget" class="form-label">Budget</label>
+                    <select id="budget" name="budget" class="form-select" required>
+                        {% for budget in extracted_data.available_budgets %}
+                        <option value="{{ budget }}" {% if budget == extracted_data.budget %}selected{% endif %}>{{ budget }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <img class="img-thumbnail d-block mb-2" style="max-height: 200px" src="data:image/jpeg;base64,{{ extracted_data.image_base64 }}" alt="Receipt">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="attach_receipt" name="attach_receipt" value="true"{% if attach_receipt_default %} checked{% endif %}>
+                    <label class="form-check-label" for="attach_receipt">Attach receipt image to transaction</label>
+                </div>
+                <input type="hidden" name="image_base64" value="{{ extracted_data.image_base64 }}">
+            </div>
+
+            <div class="form-text"><i class="bi bi-wallet2"></i> Source account: {{ extracted_data.source_account }}</div>
+            <input type="hidden" name="source_account" value="{{ extracted_data.source_account }}">
+        </div>
+        <div class="card-footer d-grid gap-2 d-sm-flex justify-content-sm-end">
+            <button type="submit" id="submit-btn" class="btn btn-primary order-sm-last"><i class="bi bi-check-lg"></i> Create transaction</button>
+            <button type="button" class="btn btn-secondary" onclick="window.location.href='/'"><i class="bi bi-x-lg"></i> Cancel</button>
+        </div>
     </div>
 </form>
 
 <div id="loading" class="loading">
-    <p>Creating transaction... This may take a minute. Please don't close this page.</p>
-    <p>If this takes too long, you can try again later.</p>
+    <div class="spinner-border text-primary mb-3" role="status" aria-hidden="true"></div>
+    <p class="mb-1 fw-semibold">Creating transaction... This may take a minute. Please don't close this page.</p>
+    <p class="mb-0 text-body-secondary">If this takes too long, you can try again later.</p>
 </div>
 {% endblock %}
 
@@ -75,4 +84,4 @@
         document.getElementById('submit-btn').disabled = true;
     }
 </script>
-{% endblock %} 
+{% endblock %}
