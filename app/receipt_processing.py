@@ -4,7 +4,7 @@ from datetime import datetime
 from functools import lru_cache
 
 from fastapi import UploadFile
-from openai import OpenAI
+from openai import BadRequestError, OpenAI
 
 from .config import get_settings
 from .firefly import (
@@ -21,6 +21,33 @@ from .models import ReceiptModel
 def get_llm_client() -> OpenAI:
     settings = get_settings()
     return OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
+
+
+# Structured-output request; strict mode needs every key required and no extras
+RECEIPT_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "receipt",
+        "strict": True,
+        "schema": {
+            **ReceiptModel.model_json_schema(),
+            "additionalProperties": False,
+        },
+    },
+}
+
+
+def request_completion(client: OpenAI, **kwargs):
+    """Ask for schema-constrained JSON, retrying without it if the provider rejects it."""
+    try:
+        return client.chat.completions.create(
+            **kwargs, response_format=RECEIPT_RESPONSE_FORMAT
+        )
+    except BadRequestError as e:
+        if "response_format" not in str(e):
+            raise
+        print(f"Provider rejected response_format, retrying without it: {e}")
+        return client.chat.completions.create(**kwargs)
 
 
 def parse_receipt(text: str) -> ReceiptModel:
@@ -87,7 +114,8 @@ async def extract_receipt_data(file: UploadFile):
             print("Sending request to LLM for analysis...")
             settings = get_settings()
             client = get_llm_client()
-            llm_response = client.chat.completions.create(
+            llm_response = request_completion(
+                client,
                 model=settings.llm_model,
                 messages=[
                     {
@@ -103,14 +131,6 @@ async def extract_receipt_data(file: UploadFile):
                         ],
                     }
                 ],
-                # Ignored by some providers (e.g. Anthropic); the prompt also asks for JSON
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "receipt",
-                        "schema": ReceiptModel.model_json_schema(),
-                    },
-                },
             )
             print("Received response from LLM")
             receipt = parse_receipt(llm_response.choices[0].message.content)
