@@ -6,7 +6,7 @@ WORKDIR /app
 
 # Copy requirements first to leverage Docker cache
 COPY pyproject.toml uv.lock /app
-RUN uv sync --frozen
+RUN uv sync --frozen --no-dev
 # Create a non-root user to run the application
 RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
@@ -15,4 +15,4 @@ USER appuser
 EXPOSE 8000
 
 # Command to run the application
-CMD ["uv", "run", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["uv", "run", "--no-dev", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8000"] 
