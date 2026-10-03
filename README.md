@@ -210,9 +210,12 @@ and add **CI success** as a required check.
 ## Why this is a separate project
 
 This repository started as a fork of David Galevski's original Receipt Scanner
-for Firefly III. It has since been detached from the fork network and is
-developed independently, because it has diverged far enough that the changes
-no longer fit as pull requests upstream:
+for Firefly III. The original repository has had no maintainer activity for
+more than six months, and pull requests there were left waiting without review.
+As I use this app myself, I decided to take it over and continue developing it
+independently, following my own plan built on top of the original code.
+
+Since then it has gained, among other things:
 
 - **Any LLM provider** - the Gemini-only SDK was replaced with an
   OpenAI-compatible client, so OpenAI, Claude, Ollama, OpenRouter, Mistral and
@@ -225,7 +228,7 @@ no longer fit as pull requests upstream:
   request, and Docker images on Docker Hub and GHCR (`latest` and `nightly`),
   so you no longer need to build from source.
 
-Running it as its own project means its own issues, releases and image tags,
+Running it as its own project gives it its own issues, releases and image tags,
 without implying the original author endorses or maintains these changes.
 
 ## Contributing
@@ -253,4 +256,4 @@ Maintained by [Marks Bogdanovs (ezitisitis)](https://github.com/ezitisitis).
 
 ## License
 
-MIT
+[MIT](LICENSE)
