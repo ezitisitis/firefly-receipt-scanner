@@ -1,3 +1,4 @@
+import base64
 import os
 import sys
 
@@ -14,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
+from .config import get_settings
 from .firefly import get_firefly_asset_accounts, get_firefly_categories
 from .receipt_processing import create_transaction_from_data, extract_receipt_data
 
@@ -51,6 +53,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Set up templates
 templates = Jinja2Templates(directory="app/templates")
+templates.env.globals["attach_receipt_default"] = get_settings().attach_receipt_default
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -107,8 +110,14 @@ async def create_transaction(
     category: str = Form(...),
     budget: str = Form(...),
     source_account: str = Form(...),
+    attach_receipt: bool = Form(False),
+    image_base64: str = Form(""),
 ):
     try:
+        image_bytes = (
+            base64.b64decode(image_base64) if attach_receipt and image_base64 else None
+        )
+
         # Create the transaction
         result = await create_transaction_from_data(
             {
@@ -121,6 +130,7 @@ async def create_transaction(
                 "source_account": source_account,
             },
             source_account,
+            image_bytes,
         )
 
         if result and "Failed to create transaction" in result:
@@ -133,7 +143,12 @@ async def create_transaction(
             {
                 "request": request,
                 "asset_accounts": get_firefly_asset_accounts(),
-                "success_message": "Transaction created successfully!",
+                "success_message": "Transaction created successfully!"
+                + (
+                    " Attaching the receipt image failed."
+                    if "attaching the receipt image failed" in result
+                    else ""
+                ),
             },
         )
     except Exception as e:

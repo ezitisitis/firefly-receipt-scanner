@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     )
     # JPEG quality (1-100) of the image sent to the LLM
     image_quality: int = Field(85, ge=1, le=100)
+    # Initial state of the "attach receipt image" checkbox on the review page
+    attach_receipt_default: bool = True
 
     @computed_field
     @property

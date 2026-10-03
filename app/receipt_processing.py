@@ -1,3 +1,4 @@
+import base64
 import time
 from datetime import datetime
 from functools import lru_cache
@@ -7,6 +8,7 @@ from openai import OpenAI
 
 from .config import get_settings
 from .firefly import (
+    attach_image_to_transaction,
     create_firefly_transaction,
     get_firefly_budgets,
     get_firefly_categories,
@@ -35,7 +37,7 @@ async def extract_receipt_data(file: UploadFile):
         print(f"Processing image: {file.filename}")
 
         # Process the image (resize and compress with more aggressive settings)
-        image_b64 = await process_image(file, max_size=(768, 768))
+        image_b64, attachment_bytes = await process_image(file, max_size=(768, 768))
         print("Image processed and encoded to base64")
 
         # Fetch dynamic data from Firefly III
@@ -146,6 +148,7 @@ async def extract_receipt_data(file: UploadFile):
             "budget": receipt.budget,
             "available_categories": categories,
             "available_budgets": budgets,
+            "image_base64": base64.b64encode(attachment_bytes).decode("ascii"),
         }
         print("Successfully extracted all data")
         return extracted_data
@@ -155,7 +158,7 @@ async def extract_receipt_data(file: UploadFile):
         raise
 
 
-async def create_transaction_from_data(receipt_data, source_account):
+async def create_transaction_from_data(receipt_data, source_account, image_bytes=None):
     """Create a transaction in Firefly III using the provided data."""
     # Create a ReceiptModel object from the data
     receipt = ReceiptModel(
@@ -186,7 +189,21 @@ async def create_transaction_from_data(receipt_data, source_account):
                 print(f"- Budget: {receipt.budget}")
                 print(f"- Source Account: {source_account}")
                 print(f"- Transaction ID: {transaction_result['data']['id']}")
-                return f"Transaction created successfully with ID: {transaction_result['data']['id']}"
+                message = f"Transaction created successfully with ID: {transaction_result['data']['id']}"
+
+                # Attach outside the retry path so a failed upload never duplicates the transaction
+                if image_bytes:
+                    try:
+                        journal_id = transaction_result["data"]["attributes"][
+                            "transactions"
+                        ][0]["transaction_journal_id"]
+                        attach_image_to_transaction(
+                            journal_id, image_bytes, f"receipt_{receipt.date}.jpg"
+                        )
+                    except Exception as e:
+                        print(f"Warning: failed to attach receipt image: {e}")
+                        message += " (attaching the receipt image failed)"
+                return message
             else:
                 last_error = (
                     "Failed to create transaction. No response from Firefly III."
