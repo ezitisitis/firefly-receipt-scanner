@@ -46,6 +46,7 @@ Environment variables loaded via `pydantic-settings` (`app/config.py`) (see `.en
 - `LLM_BASE_URL` — OpenAI-compatible endpoint (defaults to Gemini's)
 - `LLM_API_KEY` — LLM provider API key (falls back to `GOOGLE_AI_API_KEY`)
 - `LLM_MODEL` — model name, defaults to `gemini-2.5-flash` (falls back to `GEMINI_MODEL`)
+- `IMAGE_QUALITY` — JPEG quality (1-100) of the image sent to the LLM, defaults to `85`
 
 ### Tech Stack
 Python 3.13, FastAPI, Uvicorn, Jinja2, Pydantic, Pillow, openai, uv (package manager), Docker

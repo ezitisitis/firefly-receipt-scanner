@@ -4,6 +4,8 @@ import io
 from fastapi import UploadFile
 from PIL import Image
 
+from .config import get_settings
+
 
 async def process_image(file: UploadFile, max_size=(768, 768)):
     """
@@ -30,5 +32,5 @@ async def process_image(file: UploadFile, max_size=(768, 768)):
     img.thumbnail(max_size, Image.LANCZOS)
 
     buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=85)
+    img.save(buf, format="JPEG", quality=get_settings().image_quality)
     return base64.b64encode(buf.getvalue()).decode()

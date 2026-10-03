@@ -47,6 +47,7 @@ https://github.com/user-attachments/assets/ec41d8dc-71e9-4aa4-b65c-869c3dd54845
    LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
    LLM_API_KEY=your-llm-api-key
    LLM_MODEL=gemini-2.5-flash
+   IMAGE_QUALITY=85
    ```
    
 ### Requesting Firefly III Token
@@ -67,6 +68,8 @@ https://github.com/user-attachments/assets/ec41d8dc-71e9-4aa4-b65c-869c3dd54845
    | Mistral | `https://api.mistral.ai/v1` | `pixtral-12b-2409` | [console.mistral.ai](https://console.mistral.ai/api-keys) |
 
    The old `GOOGLE_AI_API_KEY` and `GEMINI_MODEL` variables are still accepted as fallbacks for `LLM_API_KEY` and `LLM_MODEL`, so existing `.env` files keep working.
+
+   `IMAGE_QUALITY` (1-100, default `85`) sets the JPEG quality of the receipt image sent to the LLM. Lower it to save bandwidth/tokens, raise it if small print is misread.
 
 ## Deployment
 ### Security and Deployment Considerations

@@ -16,6 +16,8 @@ class Settings(BaseSettings):
         "gemini-2.5-flash",
         validation_alias=AliasChoices("LLM_MODEL", "GEMINI_MODEL"),
     )
+    # JPEG quality (1-100) of the image sent to the LLM
+    image_quality: int = Field(85, ge=1, le=100)
 
     @computed_field
     @property
