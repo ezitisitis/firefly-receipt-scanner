@@ -4,8 +4,10 @@ import json
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 from fastapi import UploadFile
+from openai import BadRequestError
 
 from app import receipt_processing as rp
 from tests.conftest import make_image
@@ -30,6 +32,12 @@ CREATED = {
 
 def upload():
     return UploadFile(file=io.BytesIO(make_image()), filename="receipt.png")
+
+
+def bad_request(message):
+    request = httpx.Request("POST", "https://llm.example/chat/completions")
+    response = httpx.Response(400, request=request)
+    return BadRequestError(message, response=response, body=None)
 
 
 def llm_client(content):
@@ -82,6 +90,37 @@ async def test_extract_receipt_data(firefly_lists):
     assert "Monthly" in text["text"]
     assert TODAY in text["text"]
     assert image["image_url"]["url"].startswith("data:image/jpeg;base64,")
+
+    json_schema = kwargs["response_format"]["json_schema"]
+    assert json_schema["strict"] is True
+    assert json_schema["schema"]["additionalProperties"] is False
+    assert set(json_schema["schema"]["required"]) == set(LLM_REPLY)
+
+
+async def test_extract_retries_without_rejected_response_format(firefly_lists):
+    client = llm_client(json.dumps(LLM_REPLY))
+    ok = client.chat.completions.create.return_value
+    client.chat.completions.create.side_effect = [
+        bad_request("response_format.json_schema.strict: Field required"),
+        ok,
+    ]
+    with patch.object(rp, "get_llm_client", return_value=client):
+        data = await rp.extract_receipt_data(upload())
+
+    assert data["store_name"] == "Rimi"
+    first, second = client.chat.completions.create.call_args_list
+    assert "response_format" in first.kwargs
+    assert "response_format" not in second.kwargs
+    assert second.kwargs["messages"] == first.kwargs["messages"]
+
+
+async def test_extract_reraises_other_bad_requests(firefly_lists):
+    client = MagicMock()
+    client.chat.completions.create.side_effect = bad_request("model not found")
+    with patch.object(rp, "get_llm_client", return_value=client):
+        with pytest.raises(BadRequestError):
+            await rp.extract_receipt_data(upload())
+    assert client.chat.completions.create.call_count == 1
 
 
 async def test_extract_uses_defaults_when_firefly_unavailable():
