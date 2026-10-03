@@ -23,7 +23,10 @@ def get_llm_client() -> OpenAI:
     return OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
 
 
-# Structured-output request; strict mode needs every key required and no extras
+# Structured-output request; strict mode needs every key required and no extras.
+# Some providers require `strict` to be present even if they then ignore the
+# schema (Anthropic's OpenAI-compatible endpoint does), so the prompt also asks
+# for JSON and parse_receipt tolerates code fences.
 RECEIPT_RESPONSE_FORMAT = {
     "type": "json_schema",
     "json_schema": {
