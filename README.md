@@ -17,7 +17,7 @@ https://github.com/user-attachments/assets/ec41d8dc-71e9-4aa4-b65c-869c3dd54845
 - Create transactions in Firefly III with a single click
 - Automatically adds an `#automated` tag to all created transactions
 - Take a photo with the camera or pick an existing image from your gallery/files
-- Optionally attaches the receipt image (JPEG, max 1600px) to the created transaction
+- Optionally attaches the receipt image (JPEG, max 1600px) to the created transaction (pre-ticked by default, set `ATTACH_RECEIPT_DEFAULT=false` in `.env` to change)
 - Mobile-friendly interface for scanning receipts on the go
 
 ## Prerequisites
@@ -103,7 +103,7 @@ This application does not include built-in authentication. It is recommended to 
    1. Open the application in your web browser
    2. Select a source account from the dropdown menu
    3. Use the camera to take a photo of your receipt, or choose an existing image
-   4. Review and edit the extracted data; untick "Attach receipt image to transaction" if you don't want the image stored in Firefly III
+   4. Review and edit the extracted data; untick "Attach receipt image to transaction" (default set by `ATTACH_RECEIPT_DEFAULT`) if you don't want the image stored in Firefly III
    5. Click "Create Transaction" to create the transaction in Firefly III
 
 If you're using a phone, consider adding a bookmark of the app to your home screen for easier access.

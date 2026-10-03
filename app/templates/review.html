@@ -51,7 +51,7 @@
     <div class="form-group">
         <img class="receipt-thumb" src="data:image/jpeg;base64,{{ extracted_data.image_base64 }}" alt="Receipt">
         <label class="checkbox-label">
-            <input type="checkbox" name="attach_receipt" value="true" checked>
+            <input type="checkbox" name="attach_receipt" value="true"{% if attach_receipt_default %} checked{% endif %}>
             Attach receipt image to transaction
         </label>
     </div>
