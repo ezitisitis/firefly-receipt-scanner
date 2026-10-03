@@ -11,7 +11,7 @@ https://github.com/user-attachments/assets/ec41d8dc-71e9-4aa4-b65c-869c3dd54845
 
 ## Features
 
-- Upload and scan receipts using Google's Gemini AI
+- Upload and scan receipts using any vision-capable LLM (Gemini, OpenAI, Claude, Ollama, ...)
 - Extract key information: date, amount, store name, category, and budget
 - Review and edit extracted data before creating transactions
 - Create transactions in Firefly III with a single click
@@ -22,7 +22,7 @@ https://github.com/user-attachments/assets/ec41d8dc-71e9-4aa4-b65c-869c3dd54845
 
 - Docker and Docker Compose
 - A Firefly III instance
-- A Google AI API key
+- An API key for an OpenAI-compatible LLM provider (Google Gemini by default)
 
 ## Configuration
 
@@ -43,23 +43,33 @@ https://github.com/user-attachments/assets/ec41d8dc-71e9-4aa4-b65c-869c3dd54845
    FIREFLY_III_URL=https://your-firefly-iii-instance.com
    FIREFLY_III_TOKEN=your-personal-access-token
 
-   # Google AI API Configuration
-   GOOGLE_AI_API_KEY=your-google-ai-api-key
-   GEMINI_MODEL=gemini-2.5-flash
+   # LLM Configuration
+   LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+   LLM_API_KEY=your-llm-api-key
+   LLM_MODEL=gemini-2.5-flash
+   IMAGE_QUALITY=85
    ```
    
 ### Requesting Firefly III Token
 
    To use this application, you'll need a personal access token for Firefly III. Follow the instructions in the official documentation to generate one: [Firefly III API - Personal Access Tokens](https://docs.firefly-iii.org/how-to/firefly-iii/features/api/#personal-access-tokens)
 
-### Requesting a Gemini API Key
-   To use Google's Gemini AI, you'll need an API key. Visit the following URL to request one: [https://aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+### LLM Provider
 
-   You will be asked to enter a credit card for verification purposes, but personal usage will most likely fall within the free tier.
+   Any provider with an OpenAI-compatible chat completions API and a vision-capable model works. Set `LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL`:
 
-### Gemini Model
+   | Provider | `LLM_BASE_URL` | Example `LLM_MODEL` | API key |
+   |---|---|---|---|
+   | Google Gemini (default) | `https://generativelanguage.googleapis.com/v1beta/openai/` | `gemini-2.5-flash` | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+   | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
+   | Anthropic Claude | `https://api.anthropic.com/v1/` | `claude-sonnet-5-5` | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
+   | Ollama (local) | `http://<host>:11434/v1` | `qwen2.5vl` | none (any non-empty value, e.g. `ollama`) |
+   | OpenRouter | `https://openrouter.ai/api/v1` | `google/gemini-2.5-flash` | [openrouter.ai/keys](https://openrouter.ai/keys) |
+   | Mistral | `https://api.mistral.ai/v1` | `pixtral-12b-2409` | [console.mistral.ai](https://console.mistral.ai/api-keys) |
 
-   The `GEMINI_MODEL` environment variable controls which Gemini model is used for receipt scanning. The recommended default is `gemini-2.5-flash`, which offers a good balance of speed and accuracy. You can change this to any supported Gemini model (e.g. `gemini-2.5-pro` for higher accuracy). See the full list of available models at [Google AI models](https://ai.google.dev/gemini-api/docs/models).
+   The old `GOOGLE_AI_API_KEY` and `GEMINI_MODEL` variables are still accepted as fallbacks for `LLM_API_KEY` and `LLM_MODEL`, so existing `.env` files keep working.
+
+   `IMAGE_QUALITY` (1-100, default `85`) sets the JPEG quality of the receipt image sent to the LLM. Lower it to save bandwidth/tokens, raise it if small print is misread.
 
 ## Deployment
 ### Security and Deployment Considerations

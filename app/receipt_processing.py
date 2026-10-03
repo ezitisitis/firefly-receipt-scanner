@@ -3,7 +3,7 @@ from datetime import datetime
 from functools import lru_cache
 
 from fastapi import UploadFile
-from google import genai
+from openai import OpenAI
 
 from .config import get_settings
 from .firefly import (
@@ -16,9 +16,17 @@ from .models import ReceiptModel
 
 
 @lru_cache
-def get_gemini_client() -> genai.Client:
+def get_llm_client() -> OpenAI:
     settings = get_settings()
-    return genai.Client(api_key=settings.google_ai_api_key)
+    return OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
+
+
+def parse_receipt(text: str) -> ReceiptModel:
+    """Parse the LLM JSON reply, tolerating ``` / ```json fences."""
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.removeprefix("```json").removeprefix("```").removesuffix("```")
+    return ReceiptModel.model_validate_json(text)
 
 
 async def extract_receipt_data(file: UploadFile):
@@ -27,7 +35,7 @@ async def extract_receipt_data(file: UploadFile):
         print(f"Processing image: {file.filename}")
 
         # Process the image (resize and compress with more aggressive settings)
-        image = await process_image(file, max_size=(768, 768))
+        image_b64 = await process_image(file, max_size=(768, 768))
         print("Image processed and encoded to base64")
 
         # Fetch dynamic data from Firefly III
@@ -61,35 +69,51 @@ async def extract_receipt_data(file: UploadFile):
             + ", ".join(categories)
             + "), "
             "3) receipt budget (choose from: " + ", ".join(budgets) + "), "
-            "4) destination account (store name) "
-            "5) description of the transaction"
-            "5) date (in YYYY-MM-DD format). Today's date is "
+            "4) destination account (store name), "
+            "5) description of the transaction, "
+            "6) date (in YYYY-MM-DD format). Today's date is "
             + datetime.now().strftime("%Y-%m-%d")
             + ". "
             "Most receipts are from the past few days, so use today's date as a reference point when interpreting dates. "
-            "If the date is not on the receipt, use today's date as the default."
+            "If the date is not on the receipt, use today's date as the default. "
+            "Respond with only a JSON object (no other text) with the keys: "
+            "date, amount, store_name, description, category, budget."
         )
 
         # Set a shorter timeout for the API call
         try:
-            print("Sending request to Gemini for analysis...")
-            # Generate receipt details using genai with a shorter timeout
+            print("Sending request to LLM for analysis...")
             settings = get_settings()
-            client = get_gemini_client()
-            gemini_response = client.models.generate_content(
-                model=settings.gemini_model,
-                contents=[
-                    receipt_prompt,
-                    image,
+            client = get_llm_client()
+            llm_response = client.chat.completions.create(
+                model=settings.llm_model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": receipt_prompt},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{image_b64}"
+                                },
+                            },
+                        ],
+                    }
                 ],
-                config={
-                    "response_mime_type": "application/json",
-                    "response_schema": ReceiptModel,
+                # Ignored by some providers (e.g. Anthropic); the prompt also asks for JSON
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "receipt",
+                        "schema": ReceiptModel.model_json_schema(),
+                    },
                 },
             )
-            print("Received response from Gemini")
+            print("Received response from LLM")
+            receipt = parse_receipt(llm_response.choices[0].message.content)
         except Exception as e:
-            print(f"Error during Gemini analysis: {str(e)}")
+            print(f"Error during LLM analysis: {str(e)}")
             print(f"Error type: {type(e)}")
             if "timeout" in str(e).lower():
                 raise TimeoutError(
@@ -99,27 +123,27 @@ async def extract_receipt_data(file: UploadFile):
 
         # Validate and format the date
         try:
-            print(f"Validating date: {gemini_response.parsed.date}")
+            print(f"Validating date: {receipt.date}")
             # Try to parse the date to ensure it's valid
-            date_obj = datetime.strptime(gemini_response.parsed.date, "%Y-%m-%d")
+            date_obj = datetime.strptime(receipt.date, "%Y-%m-%d")
             # Format it back to the expected format
-            gemini_response.parsed.date = date_obj.strftime("%Y-%m-%d")
+            receipt.date = date_obj.strftime("%Y-%m-%d")
             print("Date validation successful")
         except ValueError:
             # If the date is invalid, use the current date
             print(
-                f"Invalid date format: {gemini_response.parsed.date}. Using current date instead."
+                f"Invalid date format: {receipt.date}. Using current date instead."
             )
-            gemini_response.parsed.date = datetime.now().strftime("%Y-%m-%d")
+            receipt.date = datetime.now().strftime("%Y-%m-%d")
 
         # Return the extracted data as a dictionary
         extracted_data = {
-            "date": gemini_response.parsed.date,
-            "amount": gemini_response.parsed.amount,
-            "store_name": gemini_response.parsed.store_name,
-            "description": gemini_response.parsed.description,
-            "category": gemini_response.parsed.category,
-            "budget": gemini_response.parsed.budget,
+            "date": receipt.date,
+            "amount": receipt.amount,
+            "store_name": receipt.store_name,
+            "description": receipt.description,
+            "category": receipt.category,
+            "budget": receipt.budget,
             "available_categories": categories,
             "available_budgets": budgets,
         }
