@@ -1,3 +1,4 @@
+import base64
 import os
 import sys
 
@@ -107,8 +108,14 @@ async def create_transaction(
     category: str = Form(...),
     budget: str = Form(...),
     source_account: str = Form(...),
+    attach_receipt: bool = Form(False),
+    image_base64: str = Form(""),
 ):
     try:
+        image_bytes = (
+            base64.b64decode(image_base64) if attach_receipt and image_base64 else None
+        )
+
         # Create the transaction
         result = await create_transaction_from_data(
             {
@@ -121,6 +128,7 @@ async def create_transaction(
                 "source_account": source_account,
             },
             source_account,
+            image_bytes,
         )
 
         if result and "Failed to create transaction" in result:
@@ -133,7 +141,12 @@ async def create_transaction(
             {
                 "request": request,
                 "asset_accounts": get_firefly_asset_accounts(),
-                "success_message": "Transaction created successfully!",
+                "success_message": "Transaction created successfully!"
+                + (
+                    " Attaching the receipt image failed."
+                    if "attaching the receipt image failed" in result
+                    else ""
+                ),
             },
         )
     except Exception as e:

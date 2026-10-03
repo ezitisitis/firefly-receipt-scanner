@@ -46,7 +46,16 @@
     </div>
     
     <input type="hidden" name="source_account" value="{{ extracted_data.source_account }}">
-    
+    <input type="hidden" name="image_base64" value="{{ extracted_data.image_base64 }}">
+
+    <div class="form-group">
+        <img class="receipt-thumb" src="data:image/jpeg;base64,{{ extracted_data.image_base64 }}" alt="Receipt">
+        <label class="checkbox-label">
+            <input type="checkbox" name="attach_receipt" value="true" checked>
+            Attach receipt image to transaction
+        </label>
+    </div>
+
     <div class="form-group">
         <button type="submit" id="submit-btn" class="btn">Create Transaction</button>
         <button type="button" class="btn btn-secondary" onclick="window.location.href='/'">Cancel</button>

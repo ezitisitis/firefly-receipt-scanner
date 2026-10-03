@@ -53,6 +53,24 @@ input:focus, select:focus {
     border-color: #3498db;
 }
 
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.checkbox-label input {
+    width: auto;
+}
+
+.receipt-thumb {
+    display: block;
+    max-width: 100%;
+    max-height: 200px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+}
+
 .btn {
     display: inline-block;
     width: 100%;

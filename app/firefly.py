@@ -165,3 +165,35 @@ def create_firefly_transaction(receipt, source_account="Cash wallet"):
     except requests.exceptions.RequestException as e:
         print(f"Error creating transaction: {e}")
         raise Exception(f"Error communicating with Firefly III: {str(e)}")
+
+
+def attach_image_to_transaction(journal_id, image_bytes, filename):
+    """Attach an image to a Firefly III transaction journal. Raises on failure."""
+    settings = get_settings()
+    headers = {
+        "Authorization": f"Bearer {settings.firefly_iii_token}",
+        "Accept": "application/json",
+    }
+
+    # Create the attachment record
+    url = urljoin(settings.firefly_api_url, "attachments")
+    payload = {
+        "filename": filename,
+        "attachable_type": "TransactionJournal",
+        "attachable_id": str(journal_id),
+    }
+    response = requests.post(url, headers=headers, json=payload, timeout=TIMEOUT)
+    response.raise_for_status()
+    attachment_id = response.json()["data"]["id"]
+
+    # Upload the file content
+    url = urljoin(settings.firefly_api_url, f"attachments/{attachment_id}/upload")
+    response = requests.post(
+        url,
+        headers={**headers, "Content-Type": "application/octet-stream"},
+        data=image_bytes,
+        timeout=TIMEOUT,
+    )
+    response.raise_for_status()
+    print(f"Attached {filename} to transaction journal {journal_id}")
+    return attachment_id
