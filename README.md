@@ -202,6 +202,9 @@ It needs the repository secrets `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN`
 (a Docker Hub access token with read/write scope). The Docker Hub repository
 defaults to `ezitisitis/firefly-receipt-scanner` and can be changed with the
 `DOCKERHUB_IMAGE` repository variable. GHCR uses the built-in `GITHUB_TOKEN`.
+The publish job runs only in this repository and only when the repository
+owner pushed, merged or released; it uses the `publish` environment, whose
+protection rules (Settings → Environments) can further restrict it.
 
 To block merging until CI is green, enable branch protection on `main`
 (Settings → Branches, or Rules → Rulesets) with "Require status checks to pass"
