@@ -236,7 +236,8 @@ without implying the original author endorses or maintains these changes.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a Pull Request. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for how to name branches.
 
 ## Support
 
