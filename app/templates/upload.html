@@ -55,7 +55,7 @@
                     <label class="form-check-label" for="match_existing">Match with existing transactions</label>
                 </div>
                 <div class="form-text">Looks for withdrawals already in Firefly III (e.g. from a bank import) with the same amount, so the receipt is added to them instead of creating a duplicate.</div>
-                <div class="input-group mt-2" style="max-width: 16rem">
+                <div class="input-group mt-2" id="window_days_group" style="max-width: 16rem">
                     <span class="input-group-text">± days</span>
                     <input type="number" id="window_days" name="window_days" class="form-control" min="0" max="60" value="{{ match_date_window_days }}">
                 </div>
@@ -82,5 +82,12 @@
         document.getElementById('loading').classList.add('active');
         document.getElementById('submit-btn').disabled = true;
     }
+    // The ± days window only matters when matching is ticked
+    const matchExisting = document.getElementById('match_existing');
+    function toggleWindowDays() {
+        document.getElementById('window_days_group').hidden = !matchExisting.checked;
+    }
+    matchExisting.addEventListener('change', toggleWindowDays);
+    toggleWindowDays();
 </script>
 {% endblock %}

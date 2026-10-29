@@ -257,8 +257,9 @@ def test_extract_converts_foreign_currency(app_module, client, rate, amount):
             app_module, client, {}, extracted={**EXTRACTED, "amount": 500000, "currency": "VND"}
         )
     assert amount in response.text
-    assert 'name="foreign_amount" value="500000"' in response.text
-    assert 'name="foreign_currency" value="VND"' in response.text
+    assert 'class="form-control" value="500000" step="any"' in response.text
+    assert 'text-uppercase" value="VND"' in response.text
+    assert 'name="account_currency" value="EUR"' in response.text
 
 
 def test_extract_bulk_renders_rows_with_errors(app_module, client):
@@ -352,3 +353,40 @@ def test_create_transactions_attachment_failed(app_module, client):
     )
     assert "1 created" in response.text
     assert "r0.png: attaching the receipt image failed" in response.text
+
+
+@pytest.mark.parametrize(
+    "fields, expected",
+    [
+        ({"foreign_amount": "500000", "foreign_currency": "vnd"}, ("500000", "VND")),
+        ({"foreign_amount": "12.5", "foreign_currency": "EUR"}, ("", "")),
+        ({"foreign_amount": "", "foreign_currency": "VND"}, ("", "")),
+    ],
+)
+def test_create_transaction_foreign_fields(app_module, client, fields, expected):
+    _, mock = create(
+        app_module,
+        client,
+        "Transaction created successfully",
+        {**FORM, "account_currency": "EUR", **fields},
+    )
+    data = mock.call_args.args[0]
+    assert (data["foreign_amount"], data["foreign_currency"]) == expected
+
+
+def test_create_transactions_foreign_fields(app_module, client):
+    data = {
+        "count": "1",
+        "source_account": "Checking",
+        **row(0, foreign_amount="500000", foreign_currency="VND", account_currency="EUR"),
+    }
+    _, create_mock, _ = bulk(app_module, client, data)
+    receipt = create_mock.call_args.args[0]
+    assert (receipt["foreign_amount"], receipt["foreign_currency"]) == ("500000", "VND")
+
+
+def test_index_toggles_window_days(app_module, client):
+    with patch.object(app_module, "get_firefly_asset_accounts", return_value=["Checking"]):
+        response = client.get("/")
+    assert 'id="window_days_group"' in response.text
+    assert "toggleWindowDays" in response.text

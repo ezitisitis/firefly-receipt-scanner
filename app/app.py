@@ -171,6 +171,14 @@ async def extract_receipt(
         )
 
 
+def foreign_fields(foreign_amount, foreign_currency, account_currency):
+    """Foreign amount and currency to store, or empty when not in another currency."""
+    currency = (foreign_currency or "").strip().upper()
+    if not foreign_amount or not currency or currency == (account_currency or "").upper():
+        return "", ""
+    return foreign_amount, currency
+
+
 async def submit_receipt(data, source_account, match, overwrite, image_bytes):
     """Create a new withdrawal, or update the matched one ("<group_id>:<journal_id>")."""
     if match and match != "new":
@@ -195,6 +203,7 @@ async def create_transaction(
     image_base64: str = Form(""),
     foreign_amount: str = Form(""),
     foreign_currency: str = Form(""),
+    account_currency: str = Form(""),
     match: str = Form("new"),
 ):
     try:
@@ -203,6 +212,9 @@ async def create_transaction(
         )
         form = await request.form()
         journal_id = match.partition(":")[2]
+        foreign_amount, foreign_currency = foreign_fields(
+            foreign_amount, foreign_currency, account_currency
+        )
 
         # Create the transaction, or update the matched one
         result = await submit_receipt(
@@ -287,6 +299,11 @@ async def create_transactions(request: Request):
             if not amount and not journal_id:
                 raise Exception("the amount is missing")
             data["amount"] = float(amount or 0)
+            data["foreign_amount"], data["foreign_currency"] = foreign_fields(
+                data["foreign_amount"],
+                data["foreign_currency"],
+                form.get(prefix + "account_currency"),
+            )
             data["source_account"] = source_account
             image_base64 = form.get(prefix + "image_base64", "")
             image_bytes = (

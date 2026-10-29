@@ -11,14 +11,27 @@
             <input type="number" id="{{ prefix }}amount" name="{{ prefix }}amount" class="form-control" value="{{ r.amount }}" step="0.01" inputmode="decimal" required>
             {% if r.foreign_currency %}
             <div class="form-text">
-                {% if r.amount == "" %}<i class="bi bi-exclamation-triangle text-warning"></i> No exchange rate, enter the amount in {{ r.account_currency }}. {% else %}Converted estimate. {% endif %}
-                Receipt: {{ r.foreign_amount }} {{ r.foreign_currency }}
+                {% if r.amount == "" %}<i class="bi bi-exclamation-triangle text-warning"></i> No exchange rate, enter the amount in {{ r.account_currency }}.{% else %}Converted estimate from the original amount.{% endif %}
             </div>
-            <input type="hidden" name="{{ prefix }}foreign_amount" value="{{ r.foreign_amount }}">
-            <input type="hidden" name="{{ prefix }}foreign_currency" value="{{ r.foreign_currency }}">
             {% endif %}
         </div>
     </div>
+
+    <div class="row">
+        <div class="col-8 col-sm-6 mb-3">
+            <label for="{{ prefix }}foreign_amount" class="form-label">Original amount</label>
+            <input type="number" id="{{ prefix }}foreign_amount" name="{{ prefix }}foreign_amount" class="form-control" value="{{ r.foreign_amount }}" step="any" min="0" inputmode="decimal">
+        </div>
+        <div class="col-4 col-sm-6 mb-3">
+            <label for="{{ prefix }}foreign_currency" class="form-label">Currency</label>
+            <input type="text" id="{{ prefix }}foreign_currency" name="{{ prefix }}foreign_currency" class="form-control text-uppercase" value="{{ r.foreign_currency or r.currency or r.account_currency }}" maxlength="3" pattern="[A-Za-z]{3}" autocapitalize="characters">
+        </div>
+        <div class="col-12 form-text mt-n2 mb-3">
+            Only for a receipt in another currency than the account; it is stored as Firefly III's foreign amount.
+            {% if r.match_checked %}Matches were searched as {{ r.currency or "the account currency" }}; re-upload if that is wrong.{% endif %}
+        </div>
+    </div>
+    <input type="hidden" name="{{ prefix }}account_currency" value="{{ r.account_currency }}">
 
     <div class="mb-3">
         <label for="{{ prefix }}store_name" class="form-label">Store name</label>
