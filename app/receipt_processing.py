@@ -12,6 +12,8 @@ from .firefly import (
     create_firefly_transaction,
     get_firefly_budgets,
     get_firefly_categories,
+    get_firefly_transaction,
+    update_firefly_transaction,
 )
 from .image_utils import process_image
 from .models import ReceiptModel
@@ -34,6 +36,7 @@ RECEIPT_RESPONSE_FORMAT = {
         "strict": True,
         "schema": {
             **ReceiptModel.model_json_schema(),
+            "required": list(ReceiptModel.model_fields),
             "additionalProperties": False,
         },
     },
@@ -103,13 +106,15 @@ async def extract_receipt_data(file: UploadFile):
             "3) receipt budget (choose from: " + ", ".join(budgets) + "), "
             "4) destination account (store name), "
             "5) description of the transaction, "
-            "6) date (in YYYY-MM-DD format). Today's date is "
+            "6) currency (ISO 4217 code such as EUR or VND, as printed on or implied by the receipt; "
+            "empty string if unknown), "
+            "7) date (in YYYY-MM-DD format). Today's date is "
             + datetime.now().strftime("%Y-%m-%d")
             + ". "
             "Most receipts are from the past few days, so use today's date as a reference point when interpreting dates. "
             "If the date is not on the receipt, use today's date as the default. "
             "Respond with only a JSON object (no other text) with the keys: "
-            "date, amount, store_name, description, category, budget."
+            "date, amount, store_name, description, category, budget, currency."
         )
 
         # Set a shorter timeout for the API call
@@ -169,6 +174,7 @@ async def extract_receipt_data(file: UploadFile):
             "description": receipt.description,
             "category": receipt.category,
             "budget": receipt.budget,
+            "currency": receipt.currency.upper(),
             "available_categories": categories,
             "available_budgets": budgets,
             "image_base64": base64.b64encode(attachment_bytes).decode("ascii"),
@@ -201,7 +207,12 @@ async def create_transaction_from_data(receipt_data, source_account, image_bytes
     for attempt in range(max_retries):
         try:
             # Create a transaction based on the receipt data
-            transaction_result = create_firefly_transaction(receipt, source_account)
+            transaction_result = create_firefly_transaction(
+                receipt,
+                source_account,
+                receipt_data.get("foreign_amount"),
+                receipt_data.get("foreign_currency"),
+            )
 
             if transaction_result:
                 print("Transaction created successfully:")
@@ -249,3 +260,49 @@ async def create_transaction_from_data(receipt_data, source_account, image_bytes
     error_msg = f"Failed to create transaction after {max_retries} attempts. Last error: {last_error}"
     print(error_msg)
     return error_msg
+
+
+# Review form field -> Firefly III split field that may be overwritten on a match
+OVERWRITE_FIELDS = {
+    "description": "description",
+    "store_name": "destination_name",
+    "category": "category_name",
+    "budget": "budget_name",
+    "date": "date",
+}
+
+
+async def update_transaction_from_data(
+    receipt_data, group_id, journal_id, overwrite, image_bytes=None
+):
+    """Link the receipt to an existing transaction: tag it, overwrite the chosen fields, attach the image."""
+    fields = {
+        OVERWRITE_FIELDS[name]: receipt_data[name]
+        for name in overwrite
+        if name in OVERWRITE_FIELDS
+    }
+    if "date" in fields:
+        fields["date"] = f"{fields['date']}T00:00:00"
+
+    split = next(
+        s
+        for s in get_firefly_transaction(group_id)
+        if s["journal_id"] == str(journal_id)
+    )
+    # Firefly III replaces the tag list, so keep the existing tags
+    if "automated" not in split["tags"]:
+        fields["tags"] = split["tags"] + ["automated"]
+
+    if fields:
+        update_firefly_transaction(group_id, journal_id, fields)
+    message = f"Transaction {group_id} updated with the receipt"
+
+    if image_bytes:
+        try:
+            attach_image_to_transaction(
+                journal_id, image_bytes, f"receipt_{receipt_data['date']}.jpg"
+            )
+        except Exception as e:
+            print(f"Warning: failed to attach receipt image: {e}")
+            message += " (attaching the receipt image failed)"
+    return message

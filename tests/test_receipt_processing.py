@@ -20,6 +20,7 @@ LLM_REPLY = {
     "description": "Groceries",
     "category": "Food",
     "budget": "Monthly",
+    "currency": "EUR",
 }
 RECEIPT_DATA = {**LLM_REPLY, "source_account": "Checking"}
 CREATED = {
@@ -165,7 +166,8 @@ async def test_create_transaction(no_sleep):
         result = await rp.create_transaction_from_data(RECEIPT_DATA, "Checking")
 
     assert result == "Transaction created successfully with ID: 42"
-    receipt, account = create.call_args.args
+    receipt, account, foreign_amount, foreign_currency = create.call_args.args
+    assert foreign_amount is None and foreign_currency is None
     assert receipt.store_name == "Rimi" and account == "Checking"
     attach.assert_not_called()
     no_sleep.assert_not_called()
@@ -224,3 +226,43 @@ async def test_create_transaction_empty_response(no_sleep):
     with patch.object(rp, "create_firefly_transaction", return_value=None):
         result = await rp.create_transaction_from_data(RECEIPT_DATA, "Checking")
     assert "No response from Firefly III" in result
+
+
+EXISTING = [{"journal_id": "100", "tags": ["bank"]}, {"journal_id": "101", "tags": []}]
+
+
+async def test_update_transaction_overwrites_chosen_fields():
+    with (
+        patch.object(rp, "get_firefly_transaction", return_value=EXISTING),
+        patch.object(rp, "update_firefly_transaction") as update,
+        patch.object(rp, "attach_image_to_transaction") as attach,
+    ):
+        result = await rp.update_transaction_from_data(
+            RECEIPT_DATA, "5", "100", ["category", "date", "bogus"], b"jpeg"
+        )
+
+    assert result == "Transaction 5 updated with the receipt"
+    assert update.call_args.args == (
+        "5",
+        "100",
+        {
+            "category_name": "Food",
+            "date": "2025-01-31T00:00:00",
+            "tags": ["bank", "automated"],
+        },
+    )
+    attach.assert_called_once_with("100", b"jpeg", "receipt_2025-01-31.jpg")
+
+
+async def test_update_transaction_nothing_to_change():
+    existing = [{"journal_id": "100", "tags": ["automated"]}]
+    with (
+        patch.object(rp, "get_firefly_transaction", return_value=existing),
+        patch.object(rp, "update_firefly_transaction") as update,
+        patch.object(rp, "attach_image_to_transaction", side_effect=RuntimeError),
+    ):
+        result = await rp.update_transaction_from_data(
+            RECEIPT_DATA, "5", "100", [], b"jpeg"
+        )
+    update.assert_not_called()
+    assert "attaching the receipt image failed" in result

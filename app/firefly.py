@@ -50,7 +50,8 @@ def get_firefly_budgets():
         return []
 
 
-def get_firefly_asset_accounts():
+def get_firefly_asset_accounts_detailed():
+    """Asset accounts as dicts with id, name and currency_code."""
     settings = get_settings()
     url = urljoin(settings.firefly_api_url, "accounts")
     headers = {
@@ -64,7 +65,14 @@ def get_firefly_asset_accounts():
         response = requests.get(url, headers=headers, params=params, timeout=TIMEOUT)
         response.raise_for_status()
         accounts_data = response.json()["data"]
-        return [account["attributes"]["name"] for account in accounts_data]
+        return [
+            {
+                "id": account.get("id"),
+                "name": account["attributes"]["name"],
+                "currency_code": account["attributes"].get("currency_code"),
+            }
+            for account in accounts_data
+        ]
     except requests.exceptions.Timeout:
         print("Request to Firefly III timed out when fetching asset accounts")
         return []
@@ -73,7 +81,13 @@ def get_firefly_asset_accounts():
         return []
 
 
-def create_firefly_transaction(receipt, source_account="Cash wallet"):
+def get_firefly_asset_accounts():
+    return [account["name"] for account in get_firefly_asset_accounts_detailed()]
+
+
+def create_firefly_transaction(
+    receipt, source_account="Cash wallet", foreign_amount=None, foreign_currency=None
+):
     settings = get_settings()
     url = urljoin(settings.firefly_api_url, "transactions")
     headers = {
@@ -108,6 +122,9 @@ def create_firefly_transaction(receipt, source_account="Cash wallet"):
             }
         ]
     }
+    if foreign_amount and foreign_currency:
+        payload["transactions"][0]["foreign_amount"] = str(foreign_amount)
+        payload["transactions"][0]["foreign_currency_code"] = foreign_currency
 
     try:
         print(f"Sending transaction to Firefly III: {json.dumps(payload, indent=2)}")
@@ -197,3 +214,86 @@ def attach_image_to_transaction(journal_id, image_bytes, filename):
     response.raise_for_status()
     print(f"Attached {filename} to transaction journal {journal_id}")
     return attachment_id
+
+
+def _split(group_id, split):
+    """Flatten a Firefly III transaction split into the fields matching needs."""
+    foreign_amount = split.get("foreign_amount")
+    return {
+        "group_id": str(group_id),
+        "journal_id": str(split["transaction_journal_id"]),
+        "date": split["date"][:10],
+        "amount": abs(float(split["amount"])),
+        "currency_code": split.get("currency_code"),
+        "foreign_amount": abs(float(foreign_amount)) if foreign_amount else None,
+        "foreign_currency_code": split.get("foreign_currency_code"),
+        "description": split.get("description") or "",
+        "destination_name": split.get("destination_name") or "",
+        "category_name": split.get("category_name") or "",
+        "budget_name": split.get("budget_name") or "",
+        "tags": split.get("tags") or [],
+        "has_attachments": bool(split.get("has_attachments")),
+    }
+
+
+def get_account_withdrawals(account_id, start, end):
+    """Withdrawal splits from an asset account between two YYYY-MM-DD dates. Raises on failure."""
+    settings = get_settings()
+    url = urljoin(settings.firefly_api_url, f"accounts/{account_id}/transactions")
+    headers = {
+        "Authorization": f"Bearer {settings.firefly_iii_token}",
+        "Accept": "application/json",
+    }
+    params = {"type": "withdrawal", "start": start, "end": end, "page": 1}
+    splits = []
+    while True:
+        response = requests.get(url, headers=headers, params=params, timeout=TIMEOUT)
+        response.raise_for_status()
+        body = response.json()
+        for group in body["data"]:
+            for split in group["attributes"]["transactions"]:
+                # Skip other splits of a group that don't come from this account
+                if str(split.get("source_id", account_id)) == str(account_id):
+                    splits.append(_split(group["id"], split))
+        total_pages = body.get("meta", {}).get("pagination", {}).get("total_pages", 1)
+        if params["page"] >= total_pages:
+            return splits
+        params["page"] += 1
+
+
+def get_firefly_transaction(group_id):
+    """Splits of a transaction group. Raises on failure."""
+    settings = get_settings()
+    url = urljoin(settings.firefly_api_url, f"transactions/{group_id}")
+    headers = {
+        "Authorization": f"Bearer {settings.firefly_iii_token}",
+        "Accept": "application/json",
+    }
+    response = requests.get(url, headers=headers, timeout=TIMEOUT)
+    response.raise_for_status()
+    group = response.json()["data"]
+    return [_split(group["id"], split) for split in group["attributes"]["transactions"]]
+
+
+def update_firefly_transaction(group_id, journal_id, fields):
+    """Update one split of an existing transaction. Raises on failure."""
+    settings = get_settings()
+    url = urljoin(settings.firefly_api_url, f"transactions/{group_id}")
+    headers = {
+        "Authorization": f"Bearer {settings.firefly_iii_token}",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "transactions": [{"transaction_journal_id": str(journal_id), **fields}]
+    }
+    print(f"Updating Firefly III transaction {group_id}: {json.dumps(payload)}")
+    response = requests.put(url, headers=headers, json=payload, timeout=TIMEOUT)
+    if response.status_code not in [200, 201]:
+        error_message = f"Error updating transaction: HTTP {response.status_code}"
+        try:
+            error_message += f" - {response.json()['message']}"
+        except Exception:
+            error_message += f" - {response.text}"
+        raise Exception(error_message)
+    return response.json()

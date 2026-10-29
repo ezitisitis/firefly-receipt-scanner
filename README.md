@@ -18,6 +18,8 @@ https://github.com/user-attachments/assets/ec41d8dc-71e9-4aa4-b65c-869c3dd54845
 - Automatically adds an `#automated` tag to all created transactions
 - Take a photo with the camera or pick an existing image from your gallery/files
 - Optionally attaches the receipt image (JPEG, max 1600px) to the created transaction (pre-ticked by default, set `ATTACH_RECEIPT_DEFAULT=false` in `.env` to change)
+- Upload many receipts at once and review them on one page
+- Optionally match receipts with transactions that already exist (e.g. from a bank statement import) instead of creating duplicates, including receipts in a foreign currency
 - Mobile-friendly interface for scanning receipts on the go
 
 ## Prerequisites
@@ -127,6 +129,19 @@ Or with Docker Compose, replace `build: .` in `docker-compose.yml` with
    4. Review and edit the extracted data; untick "Attach receipt image to transaction" (default set by `ATTACH_RECEIPT_DEFAULT`) if you don't want the image stored in Firefly III
    5. Click "Create Transaction" to create the transaction in Firefly III
 
+### Bulk upload and matching existing transactions
+
+Select several images in step 3 to get one review page for all of them; "Save all" handles every receipt and reports what was created, updated, skipped or failed.
+
+If your bank statements are imported separately, tick **Match with existing transactions** (default set by `MATCH_EXISTING_DEFAULT`) and choose how many days before/after the receipt date to search (default `MATCH_DATE_WINDOW_DAYS=3`). For each receipt the app lists withdrawals from the selected source account in that window whose amount fits:
+
+- exact amount first, or within `MATCH_AMOUNT_TOLERANCE` (absolute, same currency);
+- for a receipt in another currency (e.g. a VND bill paid from a EUR account): the transaction's recorded foreign amount if the import stored one, otherwise the receipt amount converted with today's rate from `FX_RATES_URL`, within `MATCH_FX_TOLERANCE_PERCENT`; if no rate is available, transactions in the window are offered by date only.
+
+The best amount match is preselected (never the same transaction for two receipts). Choosing an existing transaction keeps its amount, adds the `#automated` tag, attaches the receipt image (if ticked) and overwrites only the fields you tick: empty ones (e.g. category, budget) are ticked by default, the bank's own values are not. You can always pick "Create a new transaction" instead, or "Skip this receipt" in bulk.
+
+A new transaction for a foreign-currency receipt gets the converted amount in the account currency (editable) and the receipt amount as Firefly III's foreign amount.
+
 If you're using a phone, consider adding a bookmark of the app to your home screen for easier access.
 ![iPhone Usage](docs/images/bookmark.jpg)
 
@@ -171,6 +186,7 @@ Your `.env` file will not be affected by the update.
   - `app.py` - FastAPI application and routes
   - `firefly.py` - Firefly III API integration
   - `receipt_processing.py` - Receipt data extraction and processing
+  - `matching.py` - Matching receipts with existing transactions, exchange rates
   - `image_utils.py` - Image processing utilities
   - `models.py` - Data models
   - `templates/` - HTML templates

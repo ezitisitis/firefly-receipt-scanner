@@ -8,3 +8,5 @@ class ReceiptModel(BaseModel):
     description: str
     category: str
     budget: str
+    # ISO 4217 code printed on the receipt, empty if unknown
+    currency: str = ""

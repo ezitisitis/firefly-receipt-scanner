@@ -9,6 +9,13 @@
     <div>{{ success_message }}</div>
 </div>
 {% endif %}
+{% if errors %}
+<div class="alert alert-warning" role="alert">
+    <ul class="mb-0">
+        {% for error in errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+</div>
+{% endif %}
 
 <form id="receipt-form" action="/extract" method="post" enctype="multipart/form-data" onsubmit="showLoading()">
     <div class="card card-primary card-outline mb-4">
@@ -38,8 +45,20 @@
 
             <div>
                 <label for="file" class="form-label">Choose image</label>
-                <input type="file" id="file" name="file" class="form-control" accept="image/*">
-                <div class="form-text">Take a photo or choose an image of the receipt.</div>
+                <input type="file" id="file" name="file" class="form-control" accept="image/*" multiple>
+                <div class="form-text">Take a photo or choose one or more receipt images.</div>
+            </div>
+
+            <div class="mt-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="match_existing" name="match_existing" value="true"{% if match_existing_default %} checked{% endif %}>
+                    <label class="form-check-label" for="match_existing">Match with existing transactions</label>
+                </div>
+                <div class="form-text">Looks for withdrawals already in Firefly III (e.g. from a bank import) with the same amount, so the receipt is added to them instead of creating a duplicate.</div>
+                <div class="input-group mt-2" style="max-width: 16rem">
+                    <span class="input-group-text">± days</span>
+                    <input type="number" id="window_days" name="window_days" class="form-control" min="0" max="60" value="{{ match_date_window_days }}">
+                </div>
             </div>
         </div>
         <div class="card-footer">
@@ -52,7 +71,7 @@
 
 <div id="loading" class="loading">
     <div class="spinner-border text-primary mb-3" role="status" aria-hidden="true"></div>
-    <p class="mb-1 fw-semibold">Processing receipt... This may take a minute. Please don't close this page.</p>
+    <p class="mb-1 fw-semibold">Processing receipts... This may take a minute per receipt. Please don't close this page.</p>
     <p class="mb-0 text-body-secondary">If this takes too long, you can try again with a smaller or clearer image.</p>
 </div>
 {% endblock %}

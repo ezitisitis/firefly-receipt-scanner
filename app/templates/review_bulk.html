@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_receipt.html" import receipt_fields %}
+
+{% block title %}Review Receipts{% endblock %}
+
+{% block content %}
+<form action="/create-transactions" method="post" onsubmit="showLoading()">
+    <p class="text-body-secondary">Review {{ receipts|length }} receipts. Each one creates a new withdrawal, updates the selected existing transaction, or is skipped.</p>
+    <input type="hidden" name="count" value="{{ receipts|length }}">
+    <input type="hidden" name="source_account" value="{{ source_account }}">
+
+    {% for r in receipts %}
+    {% set prefix = "r" ~ loop.index0 ~ "_" %}
+    <div class="card card-primary card-outline mb-4 receipt-row">
+        <div class="card-header">
+            <h3 class="card-title"><i class="bi bi-receipt me-1"></i> {{ loop.index }}. {{ r.filename }}</h3>
+        </div>
+        <div class="card-body">
+            <input type="hidden" name="{{ prefix }}filename" value="{{ r.filename }}">
+            {% if r.error %}
+            <div class="alert alert-danger mb-0">Could not read this receipt: {{ r.error }}</div>
+            <input type="hidden" name="{{ prefix }}match" value="skip">
+            {% else %}
+            {{ receipt_fields(r, prefix, allow_skip=True) }}
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="form-text mb-3"><i class="bi bi-wallet2"></i> Source account: {{ source_account }}</div>
+    <div class="d-grid gap-2 d-sm-flex justify-content-sm-end mb-4">
+        <button type="submit" id="submit-btn" class="btn btn-primary order-sm-last"><i class="bi bi-check-lg"></i> Save all</button>
+        <button type="button" class="btn btn-secondary" onclick="window.location.href='/'"><i class="bi bi-x-lg"></i> Cancel</button>
+    </div>
+</form>
+
+<div id="loading" class="loading">
+    <div class="spinner-border text-primary mb-3" role="status" aria-hidden="true"></div>
+    <p class="mb-1 fw-semibold">Saving transactions... This may take a minute. Please don't close this page.</p>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function showLoading() {
+        document.getElementById('loading').classList.add('active');
+        document.getElementById('submit-btn').disabled = true;
+    }
+    // A skipped receipt's fields are disabled so they are neither validated nor sent
+    document.addEventListener('change', function (event) {
+        if (!event.target.name || !event.target.name.endsWith('_match')) return;
+        const row = event.target.closest('.receipt-row');
+        row.querySelector('.receipt-fields').disabled = event.target.value === 'skip';
+    });
+</script>
+{% endblock %}

@@ -35,15 +35,17 @@ User → FastAPI (app.py) → OpenAI-compatible LLM (receipt_processing.py)
 
 ### Request Flow
 1. `GET /` — upload form, fetches asset accounts from Firefly III
-2. `POST /extract` — receives image + source account, processes image (resize/compress via `image_utils.py`), sends to the LLM with categories/budgets from Firefly III, returns review form
-3. `POST /create-transaction` — validates via `ReceiptModel`, creates withdrawal in Firefly III with `#automated` tag, 3 retries with exponential backoff
+2. `POST /extract` — receives one or more images + source account (+ optional `match_existing`/`window_days`), processes each image (resize/compress via `image_utils.py`), sends it to the LLM with categories/budgets from Firefly III, converts a foreign-currency amount to the account currency, optionally looks up matching existing withdrawals (`matching.py`); returns `review.html` for one image or `review_bulk.html` (fields prefixed `r0_`, `r1_`, ...) for several. Both render fields through the `receipt_fields` macro in `_receipt.html`
+3. `POST /create-transaction` — single receipt; `match` is `new` or `<group_id>:<journal_id>`. New: creates withdrawal in Firefly III with `#automated` tag, 3 retries with exponential backoff. Match: `update_transaction_from_data` adds the tag, overwrites only the fields ticked in `overwrite_<journal_id>`, attaches the image
+4. `POST /create-transactions` — bulk submit of the same per row (`r{i}_match` may also be `skip`), renders a summary
 
 ### Key Modules
 - **app.py** — FastAPI routes, middleware (ProxyHeaders, TrustedHost), static file mounting, startup validation of Firefly III connection
 - **receipt_processing.py** — LLM integration via the `openai` SDK (`LLM_BASE_URL`/`LLM_MODEL`, defaults to Gemini `gemini-2.5-flash`), dynamic prompt construction with Firefly categories/budgets, JSON response parsed into `ReceiptModel` by `parse_receipt`
-- **firefly.py** — Firefly III REST API client (accounts, categories, budgets, transaction creation), 30s timeout, comprehensive HTTP error handling
+- **firefly.py** — Firefly III REST API client (accounts, categories, budgets, transaction creation/update, account withdrawals), 30s timeout, comprehensive HTTP error handling
+- **matching.py** — finds existing withdrawals within ±N days whose amount matches (exact, tolerance, recorded foreign amount, or converted via `FX_RATES_URL`); `assign_matches` preselects one-to-one
 - **image_utils.py** — PIL image processing: RGB conversion, resize to max 768×768 with aspect ratio preservation, returns base64 JPEG
-- **models.py** — `ReceiptModel` Pydantic model (date, amount, store_name, description, category, budget)
+- **models.py** — `ReceiptModel` Pydantic model (date, amount, store_name, description, category, budget, currency)
 - **templates/** — Jinja2 templates: `base.html` (layout + PWA meta), `upload.html`, `review.html`, `error.html`
 
 ### Configuration
@@ -55,6 +57,11 @@ Environment variables loaded via `pydantic-settings` (`app/config.py`) (see `.en
 - `LLM_MODEL` — model name, defaults to `gemini-2.5-flash` (falls back to `GEMINI_MODEL`)
 - `IMAGE_QUALITY` — JPEG quality (1-100) of the image sent to the LLM, defaults to `85`
 - `ATTACH_RECEIPT_DEFAULT` — initial state of the attach-receipt checkbox on the review page, defaults to `true`
+- `MATCH_EXISTING_DEFAULT` — initial state of the "Match with existing transactions" checkbox, defaults to `false`
+- `MATCH_DATE_WINDOW_DAYS` — default ± days searched around the receipt date, defaults to `3`
+- `MATCH_AMOUNT_TOLERANCE` — absolute amount tolerance for same-currency matches, defaults to `0`
+- `MATCH_FX_TOLERANCE_PERCENT` — % tolerance for converted amounts, defaults to `5`
+- `FX_RATES_URL` — exchange-rate endpoint (`{base}` placeholder, returns `{"rates": {...}}`), defaults to open.er-api.com; empty disables conversion
 
 ### Tech Stack
 Python 3.13, FastAPI, Uvicorn, Jinja2, Pydantic, Pillow, openai, uv (package manager), Docker, pytest

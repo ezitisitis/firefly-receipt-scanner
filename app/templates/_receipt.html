@@ -1,0 +1,107 @@
+{# Fields of one receipt on the review pages; prefix is "" for a single receipt and "r0_", "r1_", ... in bulk. #}
+{% macro receipt_fields(r, prefix="", allow_skip=False) %}
+<fieldset class="receipt-fields">
+    <div class="row">
+        <div class="col-sm-6 mb-3">
+            <label for="{{ prefix }}date" class="form-label">Date</label>
+            <input type="date" id="{{ prefix }}date" name="{{ prefix }}date" class="form-control" value="{{ r.date }}" required>
+        </div>
+        <div class="col-sm-6 mb-3">
+            <label for="{{ prefix }}amount" class="form-label">Amount{% if r.account_currency %} ({{ r.account_currency }}){% endif %}</label>
+            <input type="number" id="{{ prefix }}amount" name="{{ prefix }}amount" class="form-control" value="{{ r.amount }}" step="0.01" inputmode="decimal" required>
+            {% if r.foreign_currency %}
+            <div class="form-text">
+                {% if r.amount == "" %}<i class="bi bi-exclamation-triangle text-warning"></i> No exchange rate, enter the amount in {{ r.account_currency }}. {% else %}Converted estimate. {% endif %}
+                Receipt: {{ r.foreign_amount }} {{ r.foreign_currency }}
+            </div>
+            <input type="hidden" name="{{ prefix }}foreign_amount" value="{{ r.foreign_amount }}">
+            <input type="hidden" name="{{ prefix }}foreign_currency" value="{{ r.foreign_currency }}">
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label for="{{ prefix }}store_name" class="form-label">Store name</label>
+        <input type="text" id="{{ prefix }}store_name" name="{{ prefix }}store_name" class="form-control" value="{{ r.store_name }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="{{ prefix }}description" class="form-label">Description</label>
+        <input type="text" id="{{ prefix }}description" name="{{ prefix }}description" class="form-control" value="{{ r.description }}" required>
+    </div>
+
+    <div class="row">
+        <div class="col-sm-6 mb-3">
+            <label for="{{ prefix }}category" class="form-label">Category</label>
+            <select id="{{ prefix }}category" name="{{ prefix }}category" class="form-select" required>
+                {% for category in r.available_categories %}
+                <option value="{{ category }}" {% if category == r.category %}selected{% endif %}>{{ category }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-sm-6 mb-3">
+            <label for="{{ prefix }}budget" class="form-label">Budget</label>
+            <select id="{{ prefix }}budget" name="{{ prefix }}budget" class="form-select" required>
+                {% for budget in r.available_budgets %}
+                <option value="{{ budget }}" {% if budget == r.budget %}selected{% endif %}>{{ budget }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <img class="img-thumbnail d-block mb-2" style="max-height: 200px" src="data:image/jpeg;base64,{{ r.image_base64 }}" alt="Receipt">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="{{ prefix }}attach_receipt" name="{{ prefix }}attach_receipt" value="true"{% if attach_receipt_default %} checked{% endif %}>
+            <label class="form-check-label" for="{{ prefix }}attach_receipt">Attach receipt image to transaction</label>
+        </div>
+        <input type="hidden" name="{{ prefix }}image_base64" value="{{ r.image_base64 }}">
+    </div>
+</fieldset>
+
+{% if r.match_checked or allow_skip %}
+<div class="mb-3">
+    <div class="form-label">Existing transactions</div>
+    {% if r.match_checked and not r.candidates %}
+    <p class="form-text">No matching transaction found.</p>
+    {% endif %}
+    {% for c in r.candidates %}
+    {% set key = c.group_id ~ ":" ~ c.journal_id %}
+    <div class="border rounded p-2 mb-2">
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="{{ prefix }}match" id="{{ prefix }}match_{{ loop.index }}" value="{{ key }}"{% if r.selected_match == key %} checked{% endif %}>
+            <label class="form-check-label" for="{{ prefix }}match_{{ loop.index }}">
+                {{ c.date }} · {{ "%.2f"|format(c.amount) }} {{ c.currency_code or "" }} · {{ c.description }}
+                <span class="text-body-secondary">({{ c.reason }}{% if c.days %}, {{ c.days }} day{{ "s" if c.days != 1 }} apart{% endif %})</span>
+                {% if c.has_receipt %}<span class="badge text-bg-warning">already has a receipt</span>{% endif %}
+            </label>
+        </div>
+        <div class="ms-4 small">
+            <div class="text-body-secondary">Overwrite with the receipt's value:</div>
+            {% for field, label, current in [
+                ("description", "Description", c.description),
+                ("store_name", "Store", c.destination_name),
+                ("category", "Category", c.category_name),
+                ("budget", "Budget", c.budget_name),
+                ("date", "Date", c.date)] %}
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="{{ prefix }}overwrite_{{ c.journal_id }}_{{ field }}" name="{{ prefix }}overwrite_{{ c.journal_id }}" value="{{ field }}"{% if not current %} checked{% endif %}>
+                <label class="form-check-label" for="{{ prefix }}overwrite_{{ c.journal_id }}_{{ field }}">{{ label }} <span class="text-body-secondary">({{ current or "empty" }})</span></label>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+    <div class="form-check">
+        <input class="form-check-input" type="radio" name="{{ prefix }}match" id="{{ prefix }}match_new" value="new"{% if (r.selected_match or "new") == "new" %} checked{% endif %}>
+        <label class="form-check-label" for="{{ prefix }}match_new">Create a new transaction</label>
+    </div>
+    {% if allow_skip %}
+    <div class="form-check">
+        <input class="form-check-input" type="radio" name="{{ prefix }}match" id="{{ prefix }}match_skip" value="skip">
+        <label class="form-check-label" for="{{ prefix }}match_skip">Skip this receipt</label>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+{% endmacro %}
