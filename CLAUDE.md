@@ -21,6 +21,8 @@ Tests live in `tests/` and mock Firefly III (`requests`) and the LLM client, so 
 
 CI (`.github/workflows/ci.yml`) runs the tests and a Docker build on every PR; the `CI success` job aggregates both and is the check to require in branch protection. The Docker image installs with `--no-dev`, so pytest isn't shipped. `.github/workflows/publish.yml` pushes multi-arch images to Docker Hub and `ghcr.io`: `nightly` on every push to `main`, `X.Y.Z`/`X.Y`/`latest` on a published (non-prerelease) release; it needs the `DOCKERHUB_USERNAME`/`DOCKERHUB_TOKEN` secrets.
 
+A "Branch naming" ruleset rejects branches unless they are `main` or start with `feature/`, `fix/`, `chore/`, `docs/` or `dependabot/`; see `CONTRIBUTING.md`.
+
 ## Architecture
 
 Three-tier FastAPI application with Jinja2 server-side rendering:
